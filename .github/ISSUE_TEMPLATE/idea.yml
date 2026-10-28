@@ -1,0 +1,30 @@
+name: Proponer una idea
+description: Algo que te gustaría que Mapache hiciera.
+title: "[Idea] "
+labels: ["idea"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: ¿Qué te gustaría que hiciera?
+    validations:
+      required: true
+  - type: textarea
+    id: para-que
+    attributes:
+      label: ¿Para qué te serviría?
+      description: Cuéntanos qué querías lograr. Así es más fácil encontrar la mejor manera de hacerlo.
+  - type: input
+    id: version-programa
+    attributes:
+      label: Versión de Mapache (si ya lo usas)
+      description: Está en Ayuda > Acerca de Mapache.
+      placeholder: "0.1.0"
+  - type: dropdown
+    id: version-windows
+    attributes:
+      label: Versión de Windows
+      options:
+        - Windows 11
+        - Windows 10
+        - Otra

@@ -1,0 +1,108 @@
+# Compila Mapache en cada cambio de la rama main (o a mano desde la pestaña Actions).
+# Deja el .zip como "artefacto" de la ejecución durante 14 días.
+# Si lo que se sube es una etiqueta v* (por ejemplo v0.1.0), además publica la versión (Release)
+# con el .zip y su .sha256.
+name: Compilar
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+# Por defecto, solo leer. Solo el trabajo «publicar» puede escribir (para crear la Release).
+permissions:
+  contents: read
+
+concurrency:
+  group: compilar-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VCPKG_ETIQUETA: '2026.10.16'
+
+jobs:
+  compilar:
+    name: Compilar Mapache (x64)
+    # windows-2022 trae Visual Studio 2022, igual que la PC donde se hizo
+    runs-on: windows-2022
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Bajar vcpkg (versión fija)
+        shell: powershell
+        run: |
+          $raiz = Join-Path $env:RUNNER_TEMP 'vcpkg'
+          git clone --depth 1 --branch $env:VCPKG_ETIQUETA https://github.com/microsoft/vcpkg $raiz
+          if ($LASTEXITCODE -ne 0) { throw 'No se pudo bajar vcpkg' }
+          New-Item -ItemType Directory -Force "$env:RUNNER_TEMP\vcpkg-binarios", "$env:RUNNER_TEMP\vcpkg-descargas" | Out-Null
+          "VCPKG_ROOT=$raiz" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "VCPKG_DEFAULT_BINARY_CACHE=$env:RUNNER_TEMP\vcpkg-binarios" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "VCPKG_DOWNLOADS=$env:RUNNER_TEMP\vcpkg-descargas" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      # Caché de las bibliotecas ya compiladas (wxWidgets tarda bastante la primera vez)
+      - name: Recuperar bibliotecas ya compiladas
+        id: cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ runner.temp }}\vcpkg-binarios
+          key: vcpkg-bin-${{ env.VCPKG_ETIQUETA }}-${{ hashFiles('vcpkg.json', 'triplets/**') }}
+
+      - name: Compilar
+        shell: powershell
+        run: .\compilar.ps1 -Publicacion
+
+      - name: Guardar bibliotecas compiladas
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ runner.temp }}\vcpkg-binarios
+          key: vcpkg-bin-${{ env.VCPKG_ETIQUETA }}-${{ hashFiles('vcpkg.json', 'triplets/**') }}
+
+      - name: Revisar que la etiqueta y version.txt coinciden
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: powershell
+        run: |
+          $v = (Get-Content version.txt -TotalCount 1).Trim()
+          if ("v$v" -ne $env:GITHUB_REF_NAME) { throw "La etiqueta $env:GITHUB_REF_NAME no coincide con version.txt ($v)" }
+
+      - name: Empaquetar
+        shell: powershell
+        run: .\empaquetar.ps1
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Mapache-x64
+          path: publicar/*
+          retention-days: 14
+
+  publicar:
+    name: Publicar la versión
+    needs: compilar
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: Mapache-x64
+          path: paquete
+
+      - name: Crear la Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          notas="Mapache ${version} para Windows 10 y 11 (64 bits).
+
+          Baja Mapache-${version}-x64.zip, descomprímelo y abre Mapache.exe (no hace falta instalar).
+          La huella SHA256 del zip está en el archivo .sha256.
+
+          Sin publicidad y sin recoger datos. Hecho por Brizna Soft."
+          gh release create "$GITHUB_REF_NAME" paquete/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Mapache ${version}" \
+            --notes "$notas"

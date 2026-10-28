@@ -1,0 +1,20 @@
+﻿Mapache 0.1.0 - Brizna Soft
+Mira qué ocupa tu disco y limpia lo que sobra.
+
+Cómo se usa
+- Abre Mapache.exe. No hace falta instalarlo.
+- Elige una unidad (C:, D:...) y pulsa «Analizar», o pulsa «Elegir carpeta...».
+- Mira qué ocupa más en las pestañas «Carpetas», «Archivos más grandes», «Por tipo» y «Mapa».
+- Clic derecho sobre una carpeta o un archivo para abrirlo, verlo en el Explorador, copiar su ruta
+  o enviarlo a la Papelera (siempre pregunta antes y nunca borra para siempre).
+- La pestaña «Limpieza» libera espacio de forma segura: Papelera, temporales viejos, informes de
+  errores de Windows y cachés de los juegos. Te dice cuánto se libera y pregunta antes.
+
+Si Windows muestra «Windows protegió tu PC», pulsa «Más información» y después «Ejecutar de todas
+formas»: pasa porque el programa todavía no está firmado.
+
+Sin publicidad y sin recoger datos. Solo se conecta a internet si pulsas «Ayuda > Buscar actualización».
+Guarda el tamaño de la ventana en %LOCALAPPDATA%\Mapache.
+
+Código, ayuda y reportar problemas: https://github.com/Brizna-Soft/mapache
+Licencia MIT (archivo LICENSE). Avisos de terceros: AVISOS-DE-TERCEROS.txt

@@ -1,0 +1,51 @@
+name: Reportar una falla
+description: Algo de Mapache no funciona como debería.
+title: "[Falla] "
+labels: ["falla"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por avisar. Por favor, no pongas datos personales (nombres de archivos privados, correos ni contraseñas).
+  - type: input
+    id: version-programa
+    attributes:
+      label: Versión de Mapache
+      description: Está en Ayuda > Acerca de Mapache.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: version-windows
+    attributes:
+      label: Versión de Windows
+      options:
+        - Windows 11
+        - Windows 10
+        - Otra
+    validations:
+      required: true
+  - type: textarea
+    id: pasos
+    attributes:
+      label: ¿Qué hiciste?
+      description: Los pasos para que la falla vuelva a pasar.
+      placeholder: |
+        1. Abrí Mapache
+        2. Analicé la unidad C:
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: ¿Qué esperabas que pasara?
+    validations:
+      required: true
+  - type: textarea
+    id: paso
+    attributes:
+      label: ¿Qué pasó en cambio?
+      description: Si salió un mensaje, cópialo aquí. Puedes adjuntar una captura de la ventana (sin datos privados).
+    validations:
+      required: true
