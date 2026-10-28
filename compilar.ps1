@@ -1,19 +1,23 @@
 ﻿# Compila Mapache y deja el programa listo en .\programa
 #
 # Uso:
-#   powershell -ExecutionPolicy Bypass -File compilar.ps1 [-Limpiar] [-Publicacion]
+#   powershell -ExecutionPolicy Bypass -File compilar.ps1 [-Limpiar] [-Publicacion] [-Pruebas]
 #
 #   -Limpiar      borra la carpeta build antes de compilar
 #   -Publicacion  versión limpia (la de version.txt, sin "-local"); la usa GitHub Actions
+#   -Pruebas      solo para desarrollo: incluye las opciones ocultas de prueba (--limpieza-de-prueba=, --lento).
+#                 Nunca se publica: no se puede usar junto con -Publicacion.
 #
 # Necesita Visual Studio 2022 (o sus Build Tools) con C++ y Git. Si la variable VCPKG_ROOT no está puesta,
 # baja vcpkg (versión fija) a vendor\vcpkg la primera vez.
 param(
     [switch]$Limpiar,
-    [switch]$Publicacion
+    [switch]$Publicacion,
+    [switch]$Pruebas
 )
 
 $ErrorActionPreference = 'Stop'
+if ($Publicacion -and $Pruebas) { throw 'Una versión para publicar no puede llevar las opciones de prueba (-Pruebas)' }
 $codigo = $PSScriptRoot
 $build = Join-Path $codigo 'build'
 $programa = Join-Path $codigo 'programa'
@@ -60,6 +64,7 @@ if (-not $Publicacion) {
     catch { $sha = $null }
     finally { $ErrorActionPreference = $antes }
     $texto = if ($sha) { "$version-local+$("$sha".Trim())" } else { "$version-local" }
+    if ($Pruebas) { $texto += '-pruebas' }
 }
 Write-Host "Versión: $texto"
 
@@ -71,6 +76,7 @@ if ($Limpiar -and (Test-Path $build)) {
 Paso 'Configurando (la primera vez vcpkg compila wxWidgets; tarda unos minutos)'
 & $cmake -S $codigo -B $build -G 'Visual Studio 17 2022' -A x64 -T v143 `
     "-DAPP_VERSION_TEXTO=$texto" `
+    "-DMAPACHE_PRUEBAS=$(if ($Pruebas) { 'ON' } else { 'OFF' })" `
     "-DVCPKG_INSTALL_OPTIONS=--clean-buildtrees-after-build;--clean-packages-after-build"
 if ($LASTEXITCODE -ne 0) { throw "Falló la configuración (código $LASTEXITCODE)" }
 

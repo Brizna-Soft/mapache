@@ -8,6 +8,7 @@
 #include <chrono>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "ajustes.hpp"
@@ -23,6 +24,10 @@ class wxStaticText;
 class MapaPanel;
 class ModeloArbol;
 class PanelLimpieza;
+namespace papelera
+{
+    enum class Respuesta;
+}
 
 struct Opciones
 {
@@ -79,7 +84,9 @@ private:
     void MostrarEnExplorador(const Elemento& e);
     void CopiarRuta(const Elemento& e);
     void EnviarAPapelera(const Elemento& e);
+    void PapeleraTerminada(const Elemento& e, const std::wstring& ruta, papelera::Respuesta respuesta, const std::wstring& detalle);
     void Quitado(const Elemento& e);
+    bool Trabajando() const;
 
     void AlCerrar(wxCloseEvent& e);
     void GuardarAjustes();
@@ -124,5 +131,9 @@ private:
     uint64_t usadoUnidad = 0;
     unsigned generacion = 0;
     wxTimer temporizador;
+    wxTimer temporizadorCierre;   // al cerrar mientras algo trabaja: espera sin congelar la ventana
     std::chrono::steady_clock::time_point inicio;
+    std::thread hiloPapelera;
+    bool enviando = false;        // enviando algo a la Papelera (en otro hilo)
+    bool cerrando = false;
 };

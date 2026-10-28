@@ -76,7 +76,7 @@ namespace
 }
 
 VentanaPrincipal::VentanaPrincipal(const Opciones& op)
-    : wxFrame(nullptr, wxID_ANY, wxString::FromUTF8(APP_NOMBRE)), opciones(op), temporizador(this)
+    : wxFrame(nullptr, wxID_ANY, wxString::FromUTF8(APP_NOMBRE)), opciones(op), temporizador(this), temporizadorCierre(this)
 {
     if (!opciones.carpetaPrueba.empty()) SetTitle(GetTitle() + L" (modo de prueba)");
     SetIcons(wxIconBundle(L"AAAA_APP", nullptr));
@@ -99,7 +99,18 @@ VentanaPrincipal::VentanaPrincipal(const Opciones& op)
         if (e.GetSelection() == PaginaLimpieza) limpieza->CalcularSiHaceFalta();
         e.Skip();
     });
-    Bind(wxEVT_TIMER, [this](wxTimerEvent&) { AlTemporizador(); });
+    Bind(wxEVT_TIMER, [this](wxTimerEvent& e) {
+        if (e.GetId() == temporizadorCierre.GetId())
+        {
+            if (!Trabajando())
+            {
+                temporizadorCierre.Stop();
+                Close();
+            }
+            return;
+        }
+        AlTemporizador();
+    });
     Bind(wxEVT_CLOSE_WINDOW, &VentanaPrincipal::AlCerrar, this);
 
     // Tecla Supr: enviar a la Papelera lo elegido
@@ -143,7 +154,9 @@ VentanaPrincipal::VentanaPrincipal(const Opciones& op)
     }
     if (ajustes.maximizada) Maximize();
 
+#ifdef MAPACHE_PRUEBAS
     if (opciones.lento) analizador.PausaPorCarpeta(25);
+#endif
     BuscarUnidades();
     SetStatusText(opciones.carpetaPrueba.empty() ? L"Mapache solo mira: no borra nada sin preguntarte."
                                                  : L"Modo de prueba: la limpieza solo toca la carpeta de prueba.");
@@ -258,6 +271,7 @@ wxWindow* VentanaPrincipal::CrearResultado(wxWindow* padre)
         auto* cancelar = new wxButton(prog, wxID_ANY, L"Cancelar");
         cancelar->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
             analizador.Cancelar();
+            progTitulo->SetLabelText(L"Cancelando...");
             SetStatusText(L"Cancelando...");
         });
         c->AddStretchSpacer(1);
@@ -545,7 +559,7 @@ void VentanaPrincipal::ElegirCarpeta()
 
 void VentanaPrincipal::Analizar(const std::wstring& rutaPedida)
 {
-    if (analizador.Ocupado()) return;
+    if (analizador.Ocupado() || enviando || cerrando) return;
     std::wstring ruta = util::Normalizar(rutaPedida);
     if (!util::ExisteCarpeta(ruta))
     {
@@ -770,7 +784,7 @@ Elemento VentanaPrincipal::ElementoDeGrandes(int fila) const
 
 void VentanaPrincipal::MenuDe(const Elemento& e, const wxPoint& dondePantalla)
 {
-    if (!e || !resultado) return;
+    if (!e || !resultado || enviando || cerrando) return;
     wxMenu menu;
     menu.Append(IdAbrir, L"Abrir");
     menu.Append(IdExplorador, L"Mostrar en el Explorador");
@@ -828,7 +842,7 @@ void VentanaPrincipal::CopiarRuta(const Elemento& e)
 
 void VentanaPrincipal::EnviarAPapelera(const Elemento& e)
 {
-    if (!e || !resultado) return;
+    if (!e || !resultado || enviando || cerrando) return;
     std::wstring ruta = resultado->Ruta(e);
 
     std::wstring motivo = papelera::Motivo(ruta);
@@ -850,13 +864,31 @@ void VentanaPrincipal::EnviarAPapelera(const Elemento& e)
     pregunta.SetYesNoLabels(L"Enviar a la Papelera", L"Cancelar");
     if (pregunta.ShowModal() != wxID_YES) return;
 
-    SetStatusText(L"Enviando a la Papelera...");
-    std::wstring detalle;
-    papelera::Respuesta respuesta;
-    {
-        wxBusyCursor ocupado;
-        respuesta = papelera::Enviar(GetHWND(), ruta, detalle);
-    }
+    // Windows hace el trabajo en otro hilo (con su propio COM) para que la ventana no se congele.
+    // Mientras tanto no se puede analizar, limpiar ni enviar otra cosa.
+    if (enviando || analizador.Ocupado()) return;
+    if (hiloPapelera.joinable()) hiloPapelera.join();
+    enviando = true;
+    vistas->Disable();
+    wxBeginBusyCursor();
+    SetStatusText(wxString::Format(L"Enviando a la Papelera: %s...", wxString(e.Nombre())));
+    HWND ventana = GetHWND();
+    hiloPapelera = std::thread([this, ventana, ruta, e]() {
+        HRESULT com = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+        std::wstring detalle;
+        papelera::Respuesta respuesta = papelera::Enviar(ventana, ruta, detalle);
+        if (SUCCEEDED(com)) CoUninitialize();
+        CallAfter([this, e, ruta, respuesta, detalle] { PapeleraTerminada(e, ruta, respuesta, detalle); });
+    });
+}
+
+void VentanaPrincipal::PapeleraTerminada(const Elemento& e, const std::wstring& ruta, papelera::Respuesta respuesta,
+                                         const std::wstring& detalle)
+{
+    if (hiloPapelera.joinable()) hiloPapelera.join();
+    enviando = false;
+    wxEndBusyCursor();
+    vistas->Enable();
     if (respuesta == papelera::Respuesta::Enviado)
     {
         wxString nombre(e.Nombre());
@@ -866,9 +898,10 @@ void VentanaPrincipal::EnviarAPapelera(const Elemento& e)
     }
     else
     {
-        util::Avisar(this, L"No se pudo enviar a la Papelera.", L"Enviar a la Papelera", wxICON_WARNING,
-                     wxString(detalle) + L"\n\n" + util::RutaCorta(ruta));
         SetStatusText(L"No se pudo enviar a la Papelera. No se borró nada.");
+        if (!cerrando)
+            util::Avisar(this, L"No se pudo enviar a la Papelera.", L"Enviar a la Papelera", wxICON_WARNING,
+                         wxString(detalle) + L"\n\n" + util::RutaCorta(ruta));
     }
 }
 
@@ -913,12 +946,35 @@ void VentanaPrincipal::GuardarAjustes()
     ajustes.Guardar();
 }
 
+bool VentanaPrincipal::Trabajando() const
+{
+    return analizador.Ocupado() || limpieza->Ocupado() || enviando;
+}
+
 void VentanaPrincipal::AlCerrar(wxCloseEvent& e)
 {
+    // Si algo sigue trabajando, se pide que pare y la ventana se cierra sola cuando termina, sin congelarse
+    if (Trabajando() && e.CanVeto())
+    {
+        if (!cerrando)
+        {
+            cerrando = true;
+            analizador.Cancelar();
+            limpieza->PedirCancelar();
+            progTitulo->SetLabelText(L"Cancelando...");
+            SetStatusText(enviando ? L"Se cerrará cuando termine de enviar a la Papelera..."
+                                   : L"Cancelando para cerrar...");
+            temporizadorCierre.Start(200);
+        }
+        e.Veto();
+        return;
+    }
     temporizador.Stop();
+    temporizadorCierre.Stop();
     analizador.Cancelar();
     analizador.Esperar();
     limpieza->Detener();
+    if (hiloPapelera.joinable()) hiloPapelera.join();
     GuardarAjustes();
     e.Skip();
 }

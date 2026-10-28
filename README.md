@@ -51,13 +51,15 @@ Solo borra cosas que Windows y los programas vuelven a crear cuando hacen falta:
 | Qué | Dónde | Detalle |
 |---|---|---|
 | Papelera de reciclaje | Todas las unidades | Viene sin marcar. Al vaciarla ya no se puede recuperar. |
-| Archivos temporales | `%TEMP%` | Solo los que tienen más de 24 horas y que ningún programa está usando. |
+| Archivos temporales | `%TEMP%` | Solo los que tienen más de 24 horas y que ningún programa está usando. Solo si tu carpeta temporal está dentro de `%LOCALAPPDATA%\Temp`, en un disco de esta PC; si no, Mapache no la toca. |
 | Informes de errores de Windows | `%LOCALAPPDATA%\Microsoft\Windows\WER` | Los informes que Windows guarda cuando un programa se cierra solo. |
 | Cachés de sombreadores (juegos) | `%LOCALAPPDATA%\D3DSCache`, `NVIDIA\DXCache`, `AMD\DxCache`, `AMD\DxcCache` | Se vuelven a crear; la primera vez que abras un juego puede tardar un poco más. |
 
 - Antes de limpiar te dice cuánto se libera y te pregunta.
 - Los temporales, los informes y las cachés se borran del todo (no van a la Papelera), porque se vuelven a crear.
 - Nunca sigue accesos directos de carpetas (uniones o enlaces) ni toca archivos que están solo en la nube.
+- Abre cada carpeta y cada archivo sin seguir enlaces y, antes de borrarlo, comprueba que de verdad está dentro de
+  la carpeta que se limpia. Si algo cambió de lugar en medio, se lo salta.
 - No toca el registro, no cambia la configuración de Windows y nada pide permiso de administrador.
 - Para limpiar más (por ejemplo `Windows.old` o restos de actualizaciones) tiene botones que abren el
   **Liberador de espacio** y el **Sensor de almacenamiento** de Windows.

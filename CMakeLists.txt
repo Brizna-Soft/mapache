@@ -37,6 +37,13 @@ set(OPCIONES_CXX /utf-8 /W4 /permissive- /EHsc /Zc:__cplusplus /guard:cf)
 # WIN32_LEAN_AND_MEAN: así <windows.h> no trae winsock.h, que choca con el winsock2.h de wxWidgets
 set(DEFINICIONES UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0A00)
 
+# Opciones ocultas para probar (--limpieza-de-prueba=, --lento). Solo para desarrollo:
+# nunca en lo que se publica (compilar.ps1 -Publicacion y el workflow las dejan apagadas).
+option(MAPACHE_PRUEBAS "Compilar las opciones ocultas de prueba (solo desarrollo)" OFF)
+if(MAPACHE_PRUEBAS)
+    list(APPEND DEFINICIONES MAPACHE_PRUEBAS)
+endif()
+
 # --- El programa ---
 file(GLOB FUENTES CONFIGURE_DEPENDS src/*.cpp src/*.hpp)
 add_executable(Mapache WIN32 ${FUENTES} res/app.rc)

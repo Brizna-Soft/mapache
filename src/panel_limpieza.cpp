@@ -96,12 +96,14 @@ PanelLimpieza::PanelLimpieza(wxWindow* padre, const std::wstring& carpetaPrueba)
     auto* botones = new wxBoxSizer(wxHORIZONTAL);
     botonLimpiar = new wxButton(this, wxID_ANY, L"Limpiar lo marcado");
     botonCalcular = new wxButton(this, wxID_ANY, L"Calcular de nuevo");
-    estado = new wxStaticText(this, wxID_ANY, L" ", wxDefaultPosition, wxDefaultSize, wxST_ELLIPSIZE_END);
     botones->Add(botonLimpiar, 0, wxRIGHT, FromDIP(8));
-    botones->Add(botonCalcular, 0, wxRIGHT, FromDIP(14));
-    botones->Add(estado, 1, wxALIGN_CENTER_VERTICAL);
+    botones->Add(botonCalcular, 0);
     caja->AddSpacer(FromDIP(8));
     caja->Add(botones, 0, wxEXPAND | wxLEFT | wxRIGHT, m);
+    // El resultado va en su propia línea y se acomoda al ancho (puede ser largo)
+    estado = new wxStaticText(this, wxID_ANY, wxEmptyString);
+    Largo(estado, L" ", 2 * m);
+    caja->Add(estado, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, m);
 
     caja->Add(new wxStaticLine(this), 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, FromDIP(16));
     auto* herramientas = new wxStaticText(this, wxID_ANY, L"Herramientas de Windows");
@@ -147,6 +149,10 @@ void PanelLimpieza::Largo(wxStaticText* control, const wxString& texto, int sang
         if (t.control == control)
         {
             t.texto = texto;
+            control->SetLabelText(texto);
+            // wxWidgets 3.3 no vuelve a partir el texto si se pide el mismo ancho que la vez anterior,
+            // aunque el texto haya cambiado: con -1 se olvida el ancho anterior
+            control->Wrap(-1);
             anchoEnvuelto = 0;
             Envolver();
             return;
@@ -160,13 +166,11 @@ void PanelLimpieza::Envolver()
     int ancho = GetClientSize().x;
     if (ancho <= 0 || ancho == anchoEnvuelto) return;
     anchoEnvuelto = ancho;
-    for (auto& t : textosLargos)
-    {
-        t.control->SetLabelText(t.texto);
-        t.control->Wrap(std::max(FromDIP(200), ancho - t.sangria));
-    }
-    Layout();
+    // Wrap() guarda el texto sin partir y lo vuelve a partir si cambia el ancho
+    for (auto& t : textosLargos) t.control->Wrap(std::max(FromDIP(200), ancho - t.sangria));
+    // Primero el tamaño virtual y después la distribución: wxScrolled distribuye con el tamaño virtual
     FitInside();
+    Layout();
 }
 PanelLimpieza::~PanelLimpieza()
 {
@@ -178,22 +182,29 @@ void PanelLimpieza::Esperar()
     if (hilo.joinable()) hilo.join();
 }
 
+void PanelLimpieza::PedirCancelar()
+{
+    detenido = true;
+    cancelar = true;
+}
+
 void PanelLimpieza::Detener()
 {
+    detenido = true;
     cancelar = true;
     Esperar();
 }
 
 void PanelLimpieza::CalcularSiHaceFalta()
 {
-    if (!calculado && !trabajando) Calcular();
+    if (!calculado && !trabajando && !detenido) Calcular();
 }
 
 void PanelLimpieza::Ocupar(bool si, const wxString& texto)
 {
     trabajando = si;
     botonCalcular->Enable(!si);
-    estado->SetLabelText(texto);
+    Largo(estado, texto.empty() ? wxString(L" ") : texto, 0);
     MostrarGrupos();
 }
 
@@ -216,8 +227,10 @@ void PanelLimpieza::MostrarGrupos()
         if (!g.disponible && !g.aviso.empty()) Largo(f.descripcion, g.aviso, 0);
     }
     ActualizarTotal();
-    Layout();
+    // Primero el tamaño virtual y después la distribución: wxScrolled distribuye con el tamaño virtual,
+    // y si quedó el ancho viejo (textos sin partir) lo de la derecha se sale de la ventana
     FitInside();
+    Layout();
 }
 
 void PanelLimpieza::ActualizarTotal()
@@ -231,7 +244,7 @@ void PanelLimpieza::ActualizarTotal()
 
 void PanelLimpieza::Calcular()
 {
-    if (trabajando) return;
+    if (trabajando || detenido) return;
     Esperar();
     auto copia = limpieza::Preparar(prueba);
     cancelar = false;
@@ -254,7 +267,7 @@ void PanelLimpieza::Calculado(const std::vector<limpieza::Grupo>& nuevos)
 
 void PanelLimpieza::Limpiar()
 {
-    if (trabajando || !calculado) return;
+    if (trabajando || !calculado || detenido) return;
     std::vector<limpieza::Grupo> elegidos;
     uint64_t suma = 0;
     wxString lista;
@@ -306,7 +319,16 @@ void PanelLimpieza::Limpiado(const limpieza::Informe& informe)
         texto += wxString::Format(L" Se dejaron %s archivos porque están en uso.", util::Numero(informe.enUso));
     if (informe.fallidos)
         texto += wxString::Format(L" %s no se %s borrar.", util::Numero(informe.fallidos), informe.fallidos == 1 ? L"pudo" : L"pudieron");
+    if (informe.omitidos == 1)
+        texto += L" Se saltó 1 cosa que no estaba donde debía (por seguridad).";
+    else if (informe.omitidos > 1)
+        texto += wxString::Format(L" Se saltaron %s cosas que no estaban donde debían (por seguridad).", util::Numero(informe.omitidos));
     mensajeFinal = texto;
     trabajando = false;
+    if (detenido)
+    {
+        Ocupar(false, mensajeFinal);
+        return;
+    }
     Calcular();
 }

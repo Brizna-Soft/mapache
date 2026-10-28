@@ -22,7 +22,8 @@ public:
     ~PanelLimpieza() override;
 
     void CalcularSiHaceFalta();
-    void Detener();
+    void Detener();          // pide parar y espera
+    void PedirCancelar();    // pide parar sin esperar (al cerrar la ventana)
     bool Ocupado() const { return trabajando; }
 
 private:
@@ -66,4 +67,5 @@ private:
     std::atomic<bool> cancelar{ false };
     bool trabajando = false;
     bool calculado = false;
+    bool detenido = false;   // la ventana se está cerrando: no se empieza nada nuevo
 };
