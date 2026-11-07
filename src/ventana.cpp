@@ -180,8 +180,9 @@ void VentanaPrincipal::CrearMenus()
 
     auto* barra = new wxMenuBar();
     barra->Append(archivo, L"&Archivo");
-    barra->Append(ayuda::CrearMenu(this, L"Muestra qué ocupa espacio en tu disco y limpia, de forma segura, lo que sobra."),
-                  L"Ay&uda");
+    ayuda::Opciones datosAyuda;
+    datosAyuda.descripcion = L"Muestra qué ocupa espacio en tu disco y limpia, de forma segura, lo que sobra.";
+    ayuda::AgregarMenu(barra, this, datosAyuda);
     SetMenuBar(barra);
 
     Bind(wxEVT_MENU, [this](wxCommandEvent&) { ElegirCarpeta(); }, IdElegirCarpeta);

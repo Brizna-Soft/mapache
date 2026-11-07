@@ -3,6 +3,7 @@
 #include <wx/app.h>
 #include <wx/msgdlg.h>
 
+#include "ayuda.hpp"
 #include "limpieza.hpp"
 #include "util.hpp"
 #include "ventana.hpp"
@@ -70,6 +71,12 @@ public:
         auto* ventana = new VentanaPrincipal(opciones);
         ventana->Show();
         return true;
+    }
+
+    int OnExit() override
+    {
+        ayuda::Cerrar();   // «Buscar actualización» ya no manda nada a la ventana
+        return wxApp::OnExit();
     }
 };
 

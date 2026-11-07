@@ -8,21 +8,18 @@ body:
       value: |
         Gracias por avisar. Por favor, no pongas datos personales (nombres de archivos privados, correos ni contraseñas).
   - type: input
-    id: version-programa
+    id: version
     attributes:
       label: Versión de Mapache
-      description: Está en Ayuda > Acerca de Mapache.
+      description: Si llegaste desde Ayuda > Reportar un problema, ya está escrita. Si no, está en Ayuda > Acerca de Mapache.
       placeholder: "0.1.1"
     validations:
       required: true
-  - type: dropdown
-    id: version-windows
+  - type: input
+    id: windows
     attributes:
       label: Versión de Windows
-      options:
-        - Windows 11
-        - Windows 10
-        - Otra
+      placeholder: "Windows 11"
     validations:
       required: true
   - type: textarea
