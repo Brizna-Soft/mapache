@@ -85,11 +85,20 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write       # para la atestación de origen del .zip
+      attestations: write
     steps:
       - uses: actions/download-artifact@v8
         with:
           name: Mapache-x64
           path: paquete
+
+      # Prueba pública de que el .zip lo armó GitHub con este código. Se comprueba con:
+      #   gh attestation verify <archivo.zip> --repo Brizna-Soft/mapache
+      - name: Atestación de origen del .zip
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: paquete/Mapache-*-x64.zip
 
       - name: Crear la Release
         env:
