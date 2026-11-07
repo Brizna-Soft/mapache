@@ -818,6 +818,9 @@ namespace
     // Todo lo demás (programas, scripts, accesos directos, tipos desconocidos) se pregunta antes.
     bool SeAbreSinPreguntar(const std::wstring& ruta)
     {
+        // Una «{» en cualquier parte de la ruta (también en una carpeta de más arriba) puede ser una carpeta especial de
+        // Windows («nombre.{CLSID}») que activa un componente al abrirse: pregunta
+        if (ruta.find(L'{') != std::wstring::npos) return false;
         DWORD a = GetFileAttributesW(util::RutaLarga(ruta).c_str());
         if (a == INVALID_FILE_ATTRIBUTES) return false;
         // Una carpeta con «{» en el nombre puede ser una carpeta especial de Windows («nombre.{CLSID}») que activa un
