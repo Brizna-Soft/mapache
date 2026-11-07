@@ -828,6 +828,24 @@ namespace
             bool finDeParte = i + 1 == ruta.size() || ruta[i + 1] == L'\\' || ruta[i + 1] == L'/';
             if (finDeParte && (ruta[i] == L'.' || ruta[i] == L' ') && !(i >= 1 && ruta[i - 1] == L':')) return false;
         }
+        // Las carpetas de más arriba: ninguna puede ser un enlace ni una carpeta especial (con marca de sistema o de solo
+        // lectura y un desktop.ini que le pone un componente: CLSID, CLSID2 o UICLSID)
+        for (std::wstring arriba = util::Padre(ruta); !arriba.empty() && arriba.size() > 3; arriba = util::Padre(arriba))
+        {
+            DWORD aa = GetFileAttributesW(util::RutaLarga(arriba).c_str());
+            if (aa == INVALID_FILE_ATTRIBUTES || (aa & FILE_ATTRIBUTE_REPARSE_POINT)) return false;
+            if (aa & (FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_READONLY))
+            {
+                std::wstring ini = arriba + L"\\desktop.ini";
+                for (const wchar_t* clave : { L"CLSID", L"CLSID2", L"UICLSID" })
+                {
+                    wchar_t valor[8] = {};
+                    if (GetPrivateProfileStringW(L".ShellClassInfo", clave, L"", valor, 8, ini.c_str()) > 0) return false;
+                }
+            }
+            std::wstring siguiente = util::Padre(arriba);
+            if (siguiente == arriba) break;
+        }
         DWORD a = GetFileAttributesW(util::RutaLarga(ruta).c_str());
         if (a == INVALID_FILE_ATTRIBUTES) return false;
         // Una carpeta con «{» en el nombre puede ser una carpeta especial de Windows («nombre.{CLSID}») que activa un
