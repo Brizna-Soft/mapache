@@ -820,8 +820,11 @@ namespace
     {
         DWORD a = GetFileAttributesW(util::RutaLarga(ruta).c_str());
         if (a == INVALID_FILE_ATTRIBUTES) return false;
+        // Una carpeta con «{» en el nombre puede ser una carpeta especial de Windows («nombre.{CLSID}») que activa un
+        // componente al abrirse: también pregunta
         if (a & FILE_ATTRIBUTE_DIRECTORY)
-            return (a & (FILE_ATTRIBUTE_REPARSE_POINT | FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_READONLY)) == 0;
+            return (a & (FILE_ATTRIBUTE_REPARSE_POINT | FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_READONLY)) == 0
+                && wcschr(PathFindFileNameW(ruta.c_str()), L'{') == nullptr;
         if (a & FILE_ATTRIBUTE_REPARSE_POINT) return false;
         const wchar_t* ext = PathFindExtensionW(ruta.c_str());
         if (!ext || !*ext || AssocIsDangerous(ext)) return false;
@@ -829,7 +832,7 @@ namespace
             L".txt", L".log", L".md", L".csv", L".pdf", L".rtf", L".doc", L".docx", L".xls", L".xlsx", L".ppt", L".pptx",
             L".odt", L".ods", L".odp", L".epub", L".jpg", L".jpeg", L".png", L".gif", L".bmp", L".webp", L".heic", L".tif",
             L".tiff", L".mp3", L".wav", L".flac", L".m4a", L".ogg", L".opus", L".aac", L".wma", L".mp4", L".mkv", L".avi",
-            L".mov", L".wmv", L".webm", L".m4v", L".zip", L".rar", L".7z" };
+            L".mov", L".wmv", L".webm", L".m4v" };
         for (const wchar_t* c : comunes)
         {
             if (_wcsicmp(ext, c) == 0) return true;
