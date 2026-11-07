@@ -19,7 +19,7 @@ body:
     attributes:
       label: Versión de Mapache (si ya lo usas)
       description: Está en Ayuda > Acerca de Mapache.
-      placeholder: "0.1.0"
+      placeholder: "0.1.1"
   - type: dropdown
     id: version-windows
     attributes:
