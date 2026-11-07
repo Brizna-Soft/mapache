@@ -1,4 +1,4 @@
-﻿Mapache 0.1.1 - Brizna Soft
+﻿Mapache 0.1.2 - Brizna Soft
 Mira qué ocupa tu disco y limpia lo que sobra.
 
 Cómo se usa

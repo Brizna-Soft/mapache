@@ -18,7 +18,7 @@
 
 ## Cómo se usa
 
-1. Baja `Mapache-0.1.1-x64.zip` de la [página de descargas](https://github.com/Brizna-Soft/mapache/releases/latest).
+1. Baja `Mapache-0.1.2-x64.zip` de la [página de descargas](https://github.com/Brizna-Soft/mapache/releases/latest).
 2. Descomprímelo y abre `Mapache.exe`. No hace falta instalar nada.
 3. Elige una unidad y pulsa **Analizar** (o pulsa **Elegir carpeta...**).
 4. Mira qué ocupa más. Si algo ya no te sirve, haz clic derecho y elige **Enviar a la Papelera**.
@@ -71,7 +71,7 @@ Solo borra cosas que Windows y los programas vuelven a crear cuando hacen falta:
 - Sin publicidad, sin telemetría y sin recoger datos.
 - Solo guarda el tamaño y el lugar de la ventana en `%LOCALAPPDATA%\Mapache\ajustes.json`.
 
-## Lo que todavía no hace (versión 0.1.1)
+## Lo que todavía no hace (versión 0.1.2)
 
 - Los archivos con varios «enlaces duros» (hay muchos dentro de `C:\Windows`) se cuentan cada vez que aparecen,
   así que Windows puede parecer más grande de lo que es.
