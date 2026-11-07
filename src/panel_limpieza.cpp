@@ -21,8 +21,8 @@ namespace
         {
         case limpieza::Tipo::Papelera: return L"Papelera de reciclaje";
         case limpieza::Tipo::Temporales: return L"Archivos temporales";
-        case limpieza::Tipo::Informes: return L"Informes de errores de Windows";
-        default: return L"Cachés de sombreadores (juegos)";
+        case limpieza::Tipo::Informes: return L"Informes de fallas de programas";
+        default: return L"Archivos que aceleran los juegos";
         }
     }
 
@@ -110,8 +110,10 @@ PanelLimpieza::PanelLimpieza(wxWindow* padre, const std::wstring& carpetaPrueba)
     herramientas->SetFont(herramientas->GetFont().Bold());
     caja->Add(herramientas, 0, wxLEFT | wxRIGHT | wxTOP, m);
     auto* textoHerramientas = new wxStaticText(this, wxID_ANY, wxEmptyString);
-    Largo(textoHerramientas, L"Para limpiar más (por ejemplo, Windows.old o restos de actualizaciones), usa las herramientas que "
-                             L"trae Windows. Pueden pedir permiso de administrador.", 2 * m);
+    Largo(textoHerramientas, L"Para limpiar más (por ejemplo, la copia de tu Windows anterior o restos de actualizaciones), usa "
+                             L"las herramientas que trae Windows. Las abre Windows, no Mapache: lo que borres ahí no va a la "
+                             L"Papelera. El Liberador de espacio puede pedir permiso de administrador para limpiar los "
+                             L"archivos del sistema.", 2 * m);
     caja->AddSpacer(FromDIP(4));
     caja->Add(textoHerramientas, 0, wxLEFT | wxRIGHT, m);
     auto* botonesWindows = new wxBoxSizer(wxHORIZONTAL);
@@ -299,7 +301,7 @@ void PanelLimpieza::Limpiar()
     Esperar();
     cancelar = false;
     mensajeFinal.clear();
-    Ocupar(true, L"Limpiando...");
+    Ocupar(true, L"Limpiando... No cierres Mapache hasta que termine.");
     hilo = std::thread([this, elegidos]() mutable {
         HRESULT com = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
         limpieza::Informe informe;
@@ -314,15 +316,18 @@ void PanelLimpieza::Limpiado(const limpieza::Informe& informe)
     Esperar();
     wxString texto = wxString::Format(L"Listo: se liberaron %s.", util::Tamano(informe.liberado));
     if (informe.enUso == 1)
-        texto += L" Se dejó 1 archivo porque está en uso.";
+        texto += L" Se dejó 1 archivo porque un programa lo está usando: ciérralo y limpia otra vez.";
     else if (informe.enUso > 1)
-        texto += wxString::Format(L" Se dejaron %s archivos porque están en uso.", util::Numero(informe.enUso));
-    if (informe.fallidos)
-        texto += wxString::Format(L" %s no se %s borrar.", util::Numero(informe.fallidos), informe.fallidos == 1 ? L"pudo" : L"pudieron");
+        texto += wxString::Format(L" Se dejaron %s archivos porque un programa los está usando: ciérralo y limpia otra vez.",
+                                  util::Numero(informe.enUso));
+    if (informe.fallidos == 1)
+        texto += L" 1 archivo no se pudo borrar (Windows no lo permitió).";
+    else if (informe.fallidos > 1)
+        texto += wxString::Format(L" %s archivos no se pudieron borrar (Windows no lo permitió).", util::Numero(informe.fallidos));
     if (informe.omitidos == 1)
-        texto += L" Se saltó 1 cosa que no estaba donde debía (por seguridad).";
+        texto += L" Por seguridad, se dejó 1 cosa que no estaba donde debía.";
     else if (informe.omitidos > 1)
-        texto += wxString::Format(L" Se saltaron %s cosas que no estaban donde debían (por seguridad).", util::Numero(informe.omitidos));
+        texto += wxString::Format(L" Por seguridad, se dejaron %s cosas que no estaban donde debían.", util::Numero(informe.omitidos));
     mensajeFinal = texto;
     trabajando = false;
     if (detenido)

@@ -24,7 +24,7 @@
 4. Mira qué ocupa más. Si algo ya no te sirve, haz clic derecho y elige **Enviar a la Papelera**.
 5. El espacio se libera de verdad cuando vacías la Papelera (en la pestaña **Limpieza**).
 
-Si Windows muestra «Windows protegió tu PC», pulsa **Más información** y después **Ejecutar de todas formas**.
+Si Windows muestra «Windows protegió su PC», pulsa **Más información** y después **Ejecutar de todas formas**.
 Pasa porque el programa todavía no está firmado.
 
 Funciona en Windows 10 y Windows 11 de 64 bits. Se ve oscuro o claro, igual que tu Windows.

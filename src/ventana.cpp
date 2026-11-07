@@ -218,15 +218,25 @@ wxWindow* VentanaPrincipal::CrearInicio(wxWindow* padre)
     caja->Add(listaUnidades, 1, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, m);
 
     auto* fila = new wxBoxSizer(wxHORIZONTAL);
-    botonAnalizar = new wxButton(p, wxID_ANY, L"Analizar");
-    auto* botonCarpeta = new wxButton(p, wxID_ANY, L"Elegir carpeta...");
-    auto* botonActualizar = new wxButton(p, wxID_ANY, L"Actualizar la lista");
+    botonAnalizar = new wxButton(p, wxID_ANY, L"&Analizar");
+    auto* botonCarpeta = new wxButton(p, wxID_ANY, L"Elegir &carpeta...");
+    auto* botonActualizar = new wxButton(p, wxID_ANY, L"Act&ualizar la lista");
     fila->Add(botonAnalizar, 0, wxRIGHT, FromDIP(8));
     fila->Add(botonCarpeta, 0);
     fila->AddStretchSpacer();
     fila->Add(botonActualizar, 0);
     caja->Add(fila, 0, wxEXPAND | wxALL, m);
+
+    // Atajo para quien solo quiere espacio: analizar C: puede tardar varios minutos
+    auto* rapido = new wxBoxSizer(wxHORIZONTAL);
+    rapido->Add(new wxStaticText(p, wxID_ANY, L"¿Solo quieres liberar espacio rápido? Analizar la unidad C: puede tardar "
+                                              L"unos minutos; la limpieza, no."),
+                0, wxALIGN_CENTER_VERTICAL | wxRIGHT, FromDIP(8));
+    auto* irALimpieza = new wxButton(p, wxID_ANY, L"Ir a &Limpieza");
+    rapido->Add(irALimpieza, 0, wxALIGN_CENTER_VERTICAL);
+    caja->Add(rapido, 0, wxLEFT | wxRIGHT | wxBOTTOM, m);
     p->SetSizer(caja);
+    irALimpieza->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { libro->SetSelection(PaginaLimpieza); });
 
     listaUnidades->Bind(wxEVT_DATAVIEW_ITEM_ACTIVATED, [this](wxDataViewEvent&) { AnalizarUnidadElegida(); });
     listaUnidades->Bind(wxEVT_DATAVIEW_SELECTION_CHANGED, [this](wxDataViewEvent&) {
@@ -670,7 +680,7 @@ void VentanaPrincipal::ActualizarResumen()
     wxString detalle = util::Cantidad(archivos, L"archivo", L"archivos");
     if (carpetas) detalle += L" en " + util::Cantidad(carpetas, L"carpeta", L"carpetas");
     if (resultado->totalDisco)
-        detalle += wxString::Format(L"  ·  Libre en el disco: %s de %s", util::Tamano(resultado->libreDisco), util::Tamano(resultado->totalDisco));
+        detalle += wxString::Format(L"  ·  Libre en el disco al analizar: %s de %s", util::Tamano(resultado->libreDisco), util::Tamano(resultado->totalDisco));
     detalle += L"  ·  Tardó " + util::Duracion(resultado->segundos);
     resDetalle->SetLabelText(detalle);
     resDetalle->SetToolTip(detalle);
@@ -793,7 +803,7 @@ void VentanaPrincipal::MenuDe(const Elemento& e, const wxPoint& dondePantalla)
     menu.Append(IdCopiar, L"Copiar ruta");
     if (e.EsCarpeta()) menu.Append(IdVerMapa, L"Ver en el mapa");
     menu.AppendSeparator();
-    menu.Append(IdPapelera, L"Enviar a la Papelera...");
+    menu.Append(IdPapelera, L"Enviar a la Papelera... (tecla Supr)");
     // El menú sale donde se hizo clic (con el teclado, donde esté el ratón)
     wxPoint donde = dondePantalla == wxDefaultPosition ? wxDefaultPosition : ScreenToClient(dondePantalla);
     switch (GetPopupMenuSelectionFromUser(menu, donde))
@@ -973,7 +983,7 @@ void VentanaPrincipal::PapeleraTerminada(const Elemento& e, const std::wstring& 
         wxString nombre(e.Nombre());
         uint64_t tam = e.Tamano();
         Quitado(e);
-        SetStatusText(wxString::Format(L"Se envió a la Papelera: %s (%s).", nombre, util::Tamano(tam)));
+        SetStatusText(wxString::Format(L"Se envió a la Papelera: %s (%s). Para liberar ese espacio, vacía la Papelera en «Limpieza».", nombre, util::Tamano(tam)));
     }
     else
     {
