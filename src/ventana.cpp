@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <shellapi.h>
 #include <shlobj.h>
+#include <shlwapi.h>
 
 #include <wx/button.h>
 #include <wx/clipbrd.h>
@@ -786,7 +787,7 @@ void VentanaPrincipal::MenuDe(const Elemento& e, const wxPoint& dondePantalla)
 {
     if (!e || !resultado || enviando || cerrando) return;
     wxMenu menu;
-    menu.Append(IdAbrir, L"Abrir");
+    menu.Append(IdAbrir, e.EsCarpeta() ? L"Abrir" : L"Abrir con su programa");
     menu.Append(IdExplorador, L"Mostrar en el Explorador");
     menu.Append(IdCopiar, L"Copiar ruta");
     if (e.EsCarpeta()) menu.Append(IdVerMapa, L"Ver en el mapa");
@@ -808,10 +809,42 @@ void VentanaPrincipal::MenuDe(const Elemento& e, const wxPoint& dondePantalla)
     }
 }
 
+namespace
+{
+    // ¿Abrirlo ejecuta algo? Los tipos que Windows considera peligrosos (AssocIsDangerous: .exe, .bat, .lnk, .scr...)
+    // y, por si esa lista no los trae, los de programas, scripts e instaladores más comunes.
+    bool EjecutaAlgo(const std::wstring& ruta)
+    {
+        const wchar_t* ext = PathFindExtensionW(ruta.c_str());
+        if (!ext || !*ext) return false;
+        if (AssocIsDangerous(ext)) return true;
+        static const wchar_t* const programas[] = { L".exe", L".com", L".scr", L".pif", L".bat", L".cmd", L".msi", L".msp",
+                                                    L".mst", L".msix", L".msixbundle", L".appx", L".appxbundle", L".appref-ms",
+                                                    L".lnk", L".url", L".ps1", L".psm1", L".vbs", L".vbe", L".js", L".jse",
+                                                    L".wsf", L".wsh", L".hta", L".cpl", L".msc", L".reg", L".jar", L".application",
+                                                    L".gadget", L".inf", L".scf", L".sys", L".dll", L".ocx" };
+        for (const wchar_t* p : programas)
+        {
+            if (_wcsicmp(ext, p) == 0) return true;
+        }
+        return false;
+    }
+}
+
 void VentanaPrincipal::Abrir(const Elemento& e)
 {
     std::wstring ruta = resultado->Ruta(e);
-    auto r = reinterpret_cast<INT_PTR>(ShellExecuteW(GetHWND(), nullptr, ruta.c_str(), nullptr, nullptr, SW_SHOWNORMAL));
+    // Mapache solo mira: un programa no se ejecuta sin preguntar (y «No» va marcado)
+    if (!e.EsCarpeta() && EjecutaAlgo(ruta))
+    {
+        wxMessageDialog pregunta(this, wxString::Format(L"«%s» es un programa. ¿Seguro que quieres ejecutarlo?", wxString(e.Nombre())),
+                                 L"Ejecutar un programa", wxYES_NO | wxNO_DEFAULT | wxICON_WARNING);
+        pregunta.SetExtendedMessage(util::RutaCorta(ruta) + L"\n\nAbrirlo lo ejecuta, como un doble clic en el Explorador. "
+                                    L"Hazlo solo si sabes qué es y confías en de dónde vino.");
+        pregunta.SetYesNoLabels(L"Ejecutarlo", L"No");
+        if (pregunta.ShowModal() != wxID_YES) return;
+    }
+    auto r = reinterpret_cast<INT_PTR>(ShellExecuteW(GetHWND(), L"open", ruta.c_str(), nullptr, nullptr, SW_SHOWNORMAL));
     if (r <= 32) util::Avisar(this, L"Windows no pudo abrirlo.", L"Abrir", wxICON_WARNING, util::RutaCorta(ruta));
 }
 
